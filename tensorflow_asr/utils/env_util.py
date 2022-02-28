@@ -12,7 +12,7 @@ def setup_environment():
     logger.setLevel(logging.INFO)
     return logger
 
-def setup_devices(devices: List[int], cpu: bool=False):
+def setup_devices(devices: List[int], cpu: bool=False) -> tf.distribute.Strategy:
     if cpu:
         cpus = tf.config.list_physical_devices("CPU")
         tf.config.set_visible_devices(cpus, "CPU")
@@ -27,4 +27,4 @@ def setup_devices(devices: List[int], cpu: bool=False):
             
 def setup_strategy(devices: List[int]):
     setup_devices(devices)
-    return tf.distribute.MirroredStrategy()
+    return tf.distribute.MirroredStrategy(cross_device_ops=tf.distribute.HierarchicalCopyAllReduce())

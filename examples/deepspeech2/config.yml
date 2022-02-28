@@ -38,7 +38,7 @@ learning_config:
   train_dataset_config:
     use_tf: True
     data_paths: 
-      - null
+      - /temp_paths/
     tfrecords_dir: null
     shuffle: True
     cache: True
@@ -57,7 +57,7 @@ learning_config:
   test_dataset_config:
     use_tf: True
     data_paths:
-      - null
+      - /temp_paths/
     tfrecords_dir: null
     shuffle: False
     cache: True

@@ -31,3 +31,4 @@ def read_raw_audio(audio: Union[str, bytes, np.ndarray], sample_rate=16000) -> n
     return audio
 
 def tf_read_raw_audio(audio: tf.Tensor, sample_rate=16000) -> tf.Tensor:
+    return None

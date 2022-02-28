@@ -6,3 +6,7 @@ AUGMENTATIONS = {
     "freq_masking": specaugment.FreqMasking,
     "time_masking": specaugment.TimeMasking,
 }
+
+class Augmentation:
+    def __init__():
+        return None

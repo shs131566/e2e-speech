@@ -10,7 +10,6 @@ class Config:
         self.decoder_config = config.pop("decoder_config", {})
         self.model_config = config.pop("model_config", {})
         self.learning_config = LearningConfig(config.pop("learning_config", {}))
-        print(config)
         for k, v in config.items():
             setattr(self, k, v)
 
@@ -39,6 +38,16 @@ class DatasetConfig:
         self.drop_remainder = config.pop("drop_remainder", True)
         self.buffer_size = config.pop("buffer_size", 100)
         self.use_tf = config.pop("use_tf", False)
-        self.augmentations = Augmentation(config.pop("augmentation_config", {}))
+        # self.augmentations = Augmentation(config.pop("augmentation_config", {}))
+        for k, v in config.items():
+            setattr(self, k, v)
+
+class RunningConfig:
+    def __init__(self, config: dict = None):
+        if not config:
+            config = {}
+        self.batch_size = config.pop("batch_size", 1)
+        self.accumulation_steps = config.pop("accumulation_steps", 1)
+        self.num_epochs = config.pop("num_epochs", 20)
         for k, v in config.items():
             setattr(self, k, v)
