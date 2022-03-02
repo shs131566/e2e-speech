@@ -4,7 +4,9 @@ import argparse
 import tensorflow as tf
 
 from tensorflow_asr.utils import env_util
+from tensorflow_asr.datasets import asr_dataset
 from tensorflow_asr.configs.config import Config
+from tensorflow_asr.featurizers import speech_featurizers, text_featurizers
 
 logger = env_util.setup_environment()
 
@@ -20,7 +22,6 @@ parser.add_argument("--sentence_piece", default=False, action="store_true", help
 parser.add_argument("--subwords", default=False, action="store_true", help="Use subwords")
 parser.add_argument("--bs", type=int, default=None, help="Batch size per replica")
 parser.add_argument("--spx", type=int, default=1, help="Steps per execution for maximizing performance")
-parser.add_argument("--metadata", type=str, default=None, help="Path to file containing metadata")
 parser.add_argument("--static_length", default=False, action="store_true", help="Use static lengths")
 parser.add_argument("--devices", type=int, nargs="*", default=[0], help="Devices' ids to apply distributed training")
 parser.add_argument("--mxp", default=False, action="store_true", help="Enable mixed precision")
@@ -33,3 +34,45 @@ tf.config.optimizer.set_experimental_options({"auto_mixed_precsion": args.mxp})
 startegy = env_util.setup_strategy(args.devices)
 
 config = Config(args.config)
+
+speech_featurizer = speech_featurizers.TFSpeechFeaturizer(config.speech_config)
+
+if args.sentence_piece:
+    logger.info("Loading SentencePiece model ...")
+    text_featurizer = text_featurizers.SentencePieceFeaturzier(config.decoder_config)
+elif args.subwords:
+    logger.info("Loading subwords ...")
+    text_featurizer = text_featurizers.SubwordFeaturizer(config.decoder_config)
+else:
+    logger.info("Use characters ...")
+    text_featurizer = text_featurizers.CharFeaturizer(config.decoder_config)
+
+if args.tfrecords:
+    train_dataset = asr_dataset.ASRTFRecordDataset(
+        speech_featurizer = speech_featurizer,
+        text_featurizer = text_featurizer,
+        **vars(config.learning_config.train_dataset_config),
+        indefinite = True
+    )
+    eval_dataset = asr_dataset.ASRTFRecordDataset(
+        speech_featurizer=speech_featurizer,
+        text_featurizer=text_featurizer,
+        **vars(config.learning_config.eval_dataset_config),
+        indefinite=True
+    )
+else:
+    train_dataset = asr_dataset.ASRSliceDataset(
+        speech_featurizer=speech_featurizer,
+        text_featurizer=text_featurizer,
+        **vars(config.learning_config.train_dataset_config),
+        indefinite=True
+    )
+    eval_dataset = asr_dataset.ASRSliceDataset(
+        speech_featurizer=speech_featurizer,
+        text_featurizer=text_featurizer,
+        **vars(config.learning_config.eval_dataset_config),
+        indefinite=True
+    )
+
+#print(speech_featurizer.__dict__)
+#print(text_featurizer.__dict__)

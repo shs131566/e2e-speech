@@ -38,7 +38,7 @@ class DatasetConfig:
         self.drop_remainder = config.pop("drop_remainder", True)
         self.buffer_size = config.pop("buffer_size", 100)
         self.use_tf = config.pop("use_tf", False)
-        # self.augmentations = Augmentation(config.pop("augmentation_config", {}))
+        self.augmentations = Augmentation(config.pop("augmentation_config", {}))
         for k, v in config.items():
             setattr(self, k, v)
 
@@ -49,5 +49,26 @@ class RunningConfig:
         self.batch_size = config.pop("batch_size", 1)
         self.accumulation_steps = config.pop("accumulation_steps", 1)
         self.num_epochs = config.pop("num_epochs", 20)
+        for k, v in config.items():
+            setattr(self, k, v)
+
+class DecoderConfig:
+    def __init__(self, config: dict=None):
+        if not config:
+            config = {}
+        self.beam_width = config.pop("beam_width", 0)
+        self.blank_at_zero = config.pop("blank_at_zero", True)
+        self.norm_score = config.pop("norm_score", True)
+        self.lm_config = config.pop("lm_config", {})
+
+        self.vocabulary = file_util.preprocess_paths(config.pop("vocabulary", None))
+        self.target_vocab_size = config.pop("target_vocab_size", 1024)
+        self.max_subword_length = config.pop("max_subword_length", 4)
+        self.output_path_prefix = file_util.preprocess_paths(config.pop("output_path_prefix", None))
+        self.model_type = config.pop("model_type", None)
+        self.corpus_files = file_util.preprocess_paths(config.pop("corpus_files", []))
+        self.max_corpus_chars = config.pop("max_corpus_chars", None)
+        self.reserved_tokens = config.pop("reserved_tokens", None)
+
         for k, v in config.items():
             setattr(self, k, v)
