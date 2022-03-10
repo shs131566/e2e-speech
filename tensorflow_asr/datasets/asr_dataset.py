@@ -1,10 +1,12 @@
 
+import tensorflow as tf
 
 from tensorflow_asr.augmentations.augmentation import Augmentation
 from tensorflow_asr.featurizers.text_featurizers import TextFeaturizer
 from tensorflow_asr.datasets.base_dataset import BaseDataset, BUFFER_SIZE, TFRECORD_SHARDS
 from tensorflow_asr.featurizers.speech_featurizers import SpeechFeaturizer
 
+logger = tf.get_logger()
 
 class ASRDataset(BaseDataset):
     def __init__(self, 
@@ -34,6 +36,31 @@ class ASRDataset(BaseDataset):
         )
         self.speech_featurizer = speech_featurizer
         self.text_featurizer = text_featurizer
+
+    #! 임시코드
+    def parse(self, path: tf.Tensor, audio: tf.Tensor, indices: tf.Tensor):
+        print("TODO: ASRDataset -> parser is not implemented.")
+
+    def create(self, batch_size: int):
+        self.read_entries()
+
+    def read_entries(self):
+        if hasattr(self, "entries") and len(self.entries) > 0:
+            return
+        self.entries = []
+        for file_path in self.data_paths:
+            logger.info(f"Reading {file_path} ...")
+            with tf.io.gfile.GFile(file_path, "r") as f:
+                temp_lines = f.read().splitlines()
+                 # Skip the header of tsv file
+                self.entries += temp_lines[1:]
+        self.entries = [line.split("\t", 2) for line in self.entries]
+        for i, line in enumerate(self.entries):
+            #self.entries[i][-1] = " ".join([str(x) for x in self.text_featurizer.extract(line[-1])])
+            for x in self.text_featurizer.extract(line[-1]):
+                print(str(x))
+            #print(self.text_featurizer.extract(line[-1]))
+            #self.text_featurizer.extract(line[-1])
 
 class ASRTFRecordDataset(ASRDataset):
     def __init__(

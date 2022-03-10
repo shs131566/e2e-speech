@@ -10,7 +10,7 @@ class BaseDataset(metaclass=abc.ABCMeta):
         self,
         data_paths: list,
         augmentations: Augmentation = Augmentation(None),
-        ache: bool = False,
+        cache: bool = False,
         shuffle: bool = False,
         buffer_size: int = BUFFER_SIZE,
         indefinite: bool = False,
@@ -23,7 +23,7 @@ class BaseDataset(metaclass=abc.ABCMeta):
         if not isinstance(self.data_paths, list):
             raise ValueError("data_paths must be a list of string paths")
         self.augmentations = augmentations
-        self.cahce = cahce
+        self.cache = cache
         self.shuffle = shuffle
         if buffer_size <= 0 and shuffle:
             raise ValueError("buffer_size must be positive when shuffle is on")

@@ -38,7 +38,7 @@ learning_config:
   train_dataset_config:
     use_tf: True
     data_paths: 
-      - /temp_paths/
+      - /root/tensorflow_asr/data/korean/sample.tsv
     tfrecords_dir: null
     shuffle: True
     cache: True
@@ -48,7 +48,8 @@ learning_config:
 
   eval_dataset_config:
     use_tf: True
-    data_paths: null
+    data_paths: 
+      - /root/tensorflow_asr/data/korean/sample.tsv
     shuffle: False
     cache: True
     buffer_size: 100
@@ -57,7 +58,7 @@ learning_config:
   test_dataset_config:
     use_tf: True
     data_paths:
-      - /temp_paths/
+      - /root/tensorflow_asr/data/korean/sample.tsv
     tfrecords_dir: null
     shuffle: False
     cache: True
