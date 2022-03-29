@@ -1,10 +1,15 @@
+from codecs import ignore_errors
+import os
+import sys
 
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_asr.augmentations.augmentation import Augmentation
+from tensorflow_asr.utils import math_util, feature_util, data_util
 from tensorflow_asr.featurizers.text_featurizers import TextFeaturizer
-from tensorflow_asr.datasets.base_dataset import BaseDataset, BUFFER_SIZE, TFRECORD_SHARDS
-from tensorflow_asr.featurizers.speech_featurizers import SpeechFeaturizer
+from tensorflow_asr.datasets.base_dataset import BaseDataset, BUFFER_SIZE, TFRECORD_SHARDS, AUTOTUNE
+from tensorflow_asr.featurizers.speech_featurizers import SpeechFeaturizer, tf_read_raw_audio
 
 logger = tf.get_logger()
 
@@ -37,10 +42,6 @@ class ASRDataset(BaseDataset):
         self.speech_featurizer = speech_featurizer
         self.text_featurizer = text_featurizer
 
-    #! 임시코드
-    def parse(self, path: tf.Tensor, audio: tf.Tensor, indices: tf.Tensor):
-        print("TODO: ASRDataset -> parser is not implemented.")
-
     def create(self, batch_size: int):
         self.read_entries()
 
@@ -56,15 +57,34 @@ class ASRDataset(BaseDataset):
                 self.entries += temp_lines[1:]
         self.entries = [line.split("\t", 2) for line in self.entries]
         for i, line in enumerate(self.entries):
-            #self.entries[i][-1] = " ".join([str(x) for x in self.text_featurizer.extract(line[-1])])
-            for x in self.text_featurizer.extract(line[-1]):
-                print(str(x))
-            #print(self.text_featurizer.extract(line[-1]))
-            #self.text_featurizer.extract(line[-1])
+            self.entries[i][-1] = " ".join([str(x) for x in self.text_featurizer.extract(line[-1]).numpy()])
+        self.entries = np.array(self.entries)
+        if self.shuffle:
+            np.random.shuffle(self.entries)
+        self.total_steps = len(self.entries)
+
+    def process(self, dataset, batch_size):
+        dataset = dataset.map(self.parse, num_parallel_calls=AUTOTUNE)
+        raise NotImplementedError()
+
+    def parse(self, path: tf.Tensor, audio: tf.Tensor, indices: tf.Tensor):
+
+        data = self.tf_preprocess(path, audio, indices) if self.use_tf else self.preprocess(path, audio, indices)
+        raise NotImplementedError()
+
+    def tf_preprocess(self, path: tf.Tensor, audio: tf.Tensor, indices: tf.Tensor):
+        with tf.device("/CPU:0"):
+            signal = tf_read_raw_audio(audio, self.speech_featurizer.sample_rate)
+            # signal = self.augmentations.signal_augmentations(signal)
+            # features = self.speech_featurizer.tf_extract(signal)
+            # TODO: tf_extract(...)
+        raise NotImplementedError()
 
 class ASRTFRecordDataset(ASRDataset):
+    """ Dataset for ASR using TFRecords """
     def __init__(
         self,
+        data_paths: list,
         tfrecords_dir: str,
         speech_featurizer: SpeechFeaturizer,
         text_featurizer: TextFeaturizer,
@@ -77,7 +97,7 @@ class ASRTFRecordDataset(ASRDataset):
         indefinite: bool = False,
         drop_remainder: bool = True,
         buffer_size: int = BUFFER_SIZE,
-        **kwargs
+        **kwargs,
     ):
         super().__init__(
             stage=stage,
@@ -99,8 +119,65 @@ class ASRTFRecordDataset(ASRDataset):
             raise ValueError("tfrecords_shards must be positive")
         self.tfrecords_shards = tfrecords_shards
 
-class ASRSliceDataset(ASRDataset):
+    def parse(self, record: tf.Tensor):
+        feature_description = {
+            "path": tf.io.FixedLenFeature([], tf.string),
+            "audio": tf.io.FixedLenFeature([], tf.string),
+            "indices": tf.io.FixedLenFeature([], tf.string)
+        }
+        example = tf.io.parse_single_example(record, feature_description)
+        tf.print(record)
+        exit(1)
+        return super().parse(**example)
+    
+    def create(self, batch_size: int):
+        have_data = self.create_tfrecords()
+        if not have_data: return None
+        
+        pattern = os.path.join(self.tfrecords_dir, f"{self.stage}*tfrecord")
+        files_ds = tf.data.Dataset.list_files(pattern)
+        ignore_order = tf.data.Options()
+        ignore_order.experimental_deterministic = False
+        files_ds = files_ds.with_options(ignore_order)
+        dataset = tf.data.TFRecordDataset(files_ds, compression_type="ZLIB", num_parallel_reads=AUTOTUNE)
 
-    #! 임시 코드
-    def dummy():
-        raise NotImplementedError()
+        return self.process(dataset, batch_size)
+    
+    def create_tfrecords(self):
+        if not self.tfrecords_dir: return False
+
+        if tf.io.gfile.glob(os.path.join(self.tfrecords_dir, f"{self.stage}*.tfrecords")):
+            logger.info(f"TFRecords're already existed: {self.stage}")
+            return True
+        
+        logger.info(f"Creating {self.stage}.tfrecord ...")
+
+        self.read_entries()
+        if not self.total_steps or self.total_steps == 0:
+            return False
+
+        def get_shard_path(shard_id):
+            return os.path.join(self.tfrecords_dir, f"{self.stage}_{shard_id}.tfrecord")
+        
+        shards = [get_shard_path(idx) for idx in range(1, self.tfrecords_shards + 1)]
+
+        splitted_entries = np.array_split(self.entries, self.tfrecords_shards)
+        for entries in zip(shards, splitted_entries):
+            self.write_tfrecord_file(entries)
+        
+        return True
+
+    def write_tfrecord_file(self, splitted_entries):
+        shard_path, entries = splitted_entries
+
+        # def parse(record):
+        #     def fn(path, indices):
+        #         audio = load_and_convert_to_wav(path.decode("utf-8")).numpy()
+        #         feature = {
+        #             "path": feature_util.bytestring_feature([path]),
+        #             "audio": feature_util.bytestring_feature([audio]),
+        #             "indices": feature_util.bytestring_feature([indices])
+        #         }
+        #         print(feature)
+        
+        dataset = tf.data.Dataset.from_tensor_slices(entries)

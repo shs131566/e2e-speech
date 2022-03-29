@@ -39,7 +39,7 @@ learning_config:
     use_tf: True
     data_paths: 
       - /root/tensorflow_asr/data/korean/sample.tsv
-    tfrecords_dir: null
+    tfrecords_dir: /root/tensorflow_asr/data/korean/tfrecords_dir
     shuffle: True
     cache: True
     buffer_size: 100

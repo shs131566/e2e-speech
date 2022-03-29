@@ -91,7 +91,6 @@ class KoreanGraphemeFeaturizer(TextFeaturizer):
     def __init__(self, decoder_config: dict):
         super(KoreanGraphemeFeaturizer, self).__init__(decoder_config)
         self.__init_vocabulary()
-        print(self.tokens2indices)
 
     def __init_vocabulary(self):
         lines = []
@@ -119,7 +118,6 @@ class KoreanGraphemeFeaturizer(TextFeaturizer):
         self.upoints = tf.strings.unicode_decode(self.tokens, "UTF-8").to_tensor(shape=[None, 1])
         self.hangul = re.compile("[^ 가-힣]+")
 
-    # TODO: 입력 텍스트 정규표현식으로 
     def extract(self, text):
         if self.hangul.findall(text) != []:
             logger.warning(f"{text} isn't written in Korean. {self.hangul.findall(text)} will be ignored.")
@@ -135,6 +133,4 @@ class KoreanGraphemeFeaturizer(TextFeaturizer):
                     idx -= 1        
                 indices.append(self.tokens2indices[self.KOREAN[idx]][grapheme])
                 idx += 1
-        print([g for c in text for g in c])
-        print(indices)
         return tf.convert_to_tensor(indices, dtype=tf.int32)

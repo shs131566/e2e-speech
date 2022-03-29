@@ -1,9 +1,12 @@
 import abc
 
+import tensorflow as tf
+
 from tensorflow_asr.augmentations.augmentation import Augmentation
 
 BUFFER_SIZE = 100
 TFRECORD_SHARDS = 16
+AUTOTUNE = tf.data.experimental.AUTOTUNE
 
 class BaseDataset(metaclass=abc.ABCMeta):
     def __init__(
